@@ -191,6 +191,9 @@ class HorizonPipelineService:
             if getattr(ctx.config, "webhook", None) and ctx.config.webhook and ctx.config.webhook.enabled:
                 if ctx.config.webhook.url_env and not os.getenv(ctx.config.webhook.url_env):
                     missing_env.append(ctx.config.webhook.url_env)
+                for env_name in ctx.config.webhook.additional_url_envs or []:
+                    if not os.getenv(env_name):
+                        missing_env.append(env_name)
 
         return {
             "horizon_path": str(ctx.horizon_path),

@@ -119,6 +119,7 @@
   "webhook": {
     "enabled": true,
     "url_env": "HORIZON_WEBHOOK_URL",
+    "additional_url_envs": ["HORIZON_WEBHOOK_URL_2"],
     "delivery": "summary",
     "overview_position": "first",
     "platform": "generic",

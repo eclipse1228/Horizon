@@ -231,6 +231,9 @@ class WebhookConfig(BaseModel):
     url_env: Optional[str] = (
         None  # Environment variable name containing the webhook URL
     )
+    additional_url_envs: Optional[List[str]] = (
+        None  # Extra env vars for fan-out to multiple webhook endpoints
+    )
     request_body: Optional[Union[str, dict, list]] = (
         None  # POST body: real JSON object or string with #{key} placeholders; if empty, will use GET
     )

@@ -1311,6 +1311,57 @@ class TestURLValidation:
         notifier = WebhookNotifier(config)
         assert notifier.url is None
 
+    def test_additional_url_envs_are_registered(self):
+        os.environ[_TEST_URL_ENV] = "https://example.com/webhook1"
+        second_env = "HORIZON_WEBHOOK_URL_2"
+        os.environ[second_env] = "https://example.com/webhook2"
+        config = WebhookConfig(
+            enabled=True,
+            url_env=_TEST_URL_ENV,
+            additional_url_envs=[second_env],
+        )
+        notifier = WebhookNotifier(config)
+        assert notifier.urls == [
+            "https://example.com/webhook1",
+            "https://example.com/webhook2",
+        ]
+        del os.environ[_TEST_URL_ENV]
+        del os.environ[second_env]
+
+    def test_notify_sends_to_all_configured_urls(self):
+        os.environ[_TEST_URL_ENV] = "https://example.com/webhook1"
+        second_env = "HORIZON_WEBHOOK_URL_2"
+        os.environ[second_env] = "https://example.com/webhook2"
+        config = WebhookConfig(
+            enabled=True,
+            url_env=_TEST_URL_ENV,
+            additional_url_envs=[second_env],
+            request_body={"content": "hello"},
+        )
+        notifier = WebhookNotifier(config)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "OK"
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            _run_async(notifier.notify({"date": "2026-04-24", "result": "success"}))
+            assert mock_client.post.call_count == 2
+            posted_urls = [call.args[0] for call in mock_client.post.call_args_list]
+            assert posted_urls == [
+                "https://example.com/webhook1",
+                "https://example.com/webhook2",
+            ]
+
+        del os.environ[_TEST_URL_ENV]
+        del os.environ[second_env]
+
     def test_whitespace_url_stripped_and_validated(self):
         """URL with surrounding whitespace is stripped before validation."""
         os.environ[_TEST_URL_ENV] = "  https://example.com/webhook  "
@@ -1696,4 +1747,4 @@ class TestSkipConsoleOutput:
         # notify() prints warning when URL is empty
         assert mock_console.print.call_count >= 1
         printed = " ".join(str(c) for c in mock_console.print.call_args_list)
-        assert "not set" in printed.lower() or "empty" in printed.lower()
+        assert "not set" in printed.lower() or "empty" in printed.lower() or "no urls" in printed.lower()

@@ -257,10 +257,15 @@ class WebhookNotifier:
                 self.console = DummyConsole()
         else:
             self.console = console
-        self.url = None
-        self._validate_config()  # sets self.url or raises ValueError
+        self.urls: list[str] = []
+        self._validate_config()  # sets self.urls or leaves it empty
 
-    def _validate_url(self, url: str) -> str:
+    @property
+    def url(self) -> Optional[str]:
+        """Primary webhook URL for backward compatibility."""
+        return self.urls[0] if self.urls else None
+
+    def _validate_url(self, url: str, env_name: str) -> str:
         """Validate webhook URL has a valid scheme (http/https) and hostname.
         Raises:
             ValueError: If the URL is empty, has wrong scheme, no hostname,
@@ -271,36 +276,57 @@ class WebhookNotifier:
         url = re.sub(r"\\([?=&%])", r"\1", url)
         if not url:
             raise ValueError(
-                f"Webhook URL is empty (env var '{self.config.url_env}' is set but empty)"
+                f"Webhook URL is empty (env var '{env_name}' is set but empty)"
             )
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https"):
             raise ValueError(
                 f"Webhook URL must use http or https scheme, got '{parsed.scheme or 'none'}' "
-                f"(env var '{self.config.url_env}')"
+                f"(env var '{env_name}')"
             )
         if not parsed.hostname:
             raise ValueError(
                 f"Webhook URL has no hostname: '{url}' "
-                f"(env var '{self.config.url_env}')"
+                f"(env var '{env_name}')"
             )
         try:
             httpx.URL(url)
         except httpx.InvalidURL as e:
             raise ValueError(
                 f"Webhook URL is structurally invalid: '{url}' — {e} "
-                f"(env var '{self.config.url_env}')"
+                f"(env var '{env_name}')"
             ) from e
         return url
+
+    def _append_url_from_env(self, env_name: str, *, required: bool) -> None:
+        """Resolve and validate a webhook URL from an environment variable."""
+        raw_url = os.getenv(env_name)
+        if raw_url is None:
+            label = "Primary" if required else "Additional"
+            logger.warning("%s webhook env var '%s' is not set.", label, env_name)
+            self.console.print(
+                f"[yellow]{label} webhook env var '{env_name}' is not set.[/yellow]"
+            )
+            return
+
+        try:
+            self.urls.append(self._validate_url(raw_url, env_name))
+        except ValueError:
+            if required:
+                raise
+            logger.warning("Invalid additional webhook URL for '%s'.", env_name)
+            self.console.print(
+                f"[yellow]Skipping invalid additional webhook '{env_name}'.[/yellow]"
+            )
 
     def _validate_config(self) -> None:
         """Validate webhook URL configuration and print warnings for skip scenarios.
 
-        Raises ValueError when URL is present but invalid.
-        Sets self.url to the validated URL, or leaves it None for skip scenarios.
+        Raises ValueError when a configured URL is present but invalid.
+        Populates self.urls with all resolved endpoints.
         """
+        self.urls = []
         if not self.config.url_env:
-            # url_env not configured at all
             logger.warning("Webhook enabled but url_env is not configured, skipping notification.")
             self.console.print(
                 "[yellow]Webhook enabled but 'url_env' is not set in config. "
@@ -308,27 +334,16 @@ class WebhookNotifier:
             )
             return
 
-        raw_url = os.getenv(self.config.url_env)
-        if raw_url is None:
-            # env var name configured, but the env var itself doesn't exist
-            logger.warning(
-                "Webhook enabled but env var '%s' is not set, skipping notification.",
-                self.config.url_env,
-            )
-            self.console.print(
-                f"[yellow]Webhook enabled but env var '{self.config.url_env}' is not set "
-                f"in your environment. Skipping notification.[/yellow]"
-            )
-            return
+        self._append_url_from_env(self.config.url_env, required=True)
 
-        # env var exists — validate the URL value (strip + scheme + hostname + httpx check)
-        self.url = self._validate_url(raw_url)
+        for env_name in self.config.additional_url_envs or []:
+            self._append_url_from_env(env_name, required=False)
 
     def _render_request_components(
-        self, variables: dict
+        self, variables: dict, url: str
     ) -> tuple[str, str | None, dict[str, str]]:
         """Render the final request URL, body, and headers for the given variables."""
-        request_url = cast(str, _render(self.url or "", variables))
+        request_url = cast(str, _render(url, variables))
 
         content_type = "application/x-www-form-urlencoded"
         body_content = None
@@ -461,7 +476,11 @@ class WebhookNotifier:
 
     def build_preview(self, variables: dict) -> dict[str, Any]:
         """Build the fully rendered request for dry-run preview."""
-        request_url, body_content, headers = self._render_request_components(variables)
+        if not self.urls:
+            return {"url": "", "body": None, "headers": {}}
+        request_url, body_content, headers = self._render_request_components(
+            variables, self.urls[0]
+        )
         return {
             "url": redact_url(request_url),
             "body": body_content,
@@ -579,38 +598,39 @@ class WebhookNotifier:
             self.console.print("[yellow]Webhook is disabled, skipping notification.[/yellow]")
             return
 
-        if not self.url:
+        if not self.urls:
             logger.warning(
-                "Webhook enabled but URL is empty (env var %s not set), skipping notification.",
-                self.config.url_env,
+                "Webhook enabled but no URLs are configured, skipping notification.",
             )
             self.console.print(
-                f"[yellow]Webhook enabled but URL is empty — "
-                f"env var '{self.config.url_env}' is not set. Skipping notification.[/yellow]"
+                "[yellow]Webhook enabled but no URLs are available. Skipping notification.[/yellow]"
             )
             return
 
-        request_url, body_content, headers = self._render_request_components(variables)
-        safe_url = redact_url(request_url)
-        if body_content is not None:
-            logger.debug(
-                "Webhook POST body (%d chars): %s",
-                len(body_content or ""),
-                (body_content or "")[:2000],
-            )
-
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                if body_content is None:
-                    response = await client.get(request_url, headers=headers)
-                else:
-                    response = await client.post(
-                        request_url,
-                        content=body_content.encode("utf-8"),
-                        headers=headers,
+                for base_url in self.urls:
+                    request_url, body_content, headers = self._render_request_components(
+                        variables, base_url
                     )
+                    safe_url = redact_url(request_url)
+                    if body_content is not None:
+                        logger.debug(
+                            "Webhook POST body (%d chars): %s",
+                            len(body_content or ""),
+                            (body_content or "")[:2000],
+                        )
 
-            self._handle_response_status(response, safe_url)
+                    if body_content is None:
+                        response = await client.get(request_url, headers=headers)
+                    else:
+                        response = await client.post(
+                            request_url,
+                            content=body_content.encode("utf-8"),
+                            headers=headers,
+                        )
+
+                    self._handle_response_status(response, safe_url)
 
         except httpx.InvalidURL as e:
             self.console.print(
@@ -621,17 +641,17 @@ class WebhookNotifier:
             self.console.print(
                 f"[red]Webhook connection failed: {e}[/red]"
             )
-            logger.error("Webhook connection failed: URL=%s, error=%s", safe_url, e)
+            logger.error("Webhook connection failed: error=%s", e)
         except httpx.TimeoutException as e:
             self.console.print(
                 f"[red]Webhook request timed out: {e}[/red]"
             )
-            logger.error("Webhook timeout: URL=%s, error=%s", safe_url, e)
+            logger.error("Webhook timeout: error=%s", e)
         except Exception as e:
             self.console.print(
                 f"[red]Webhook call failed unexpectedly: {type(e).__name__}: {e}[/red]"
             )
-            logger.error("Webhook unexpected error: URL=%s, type=%s, error=%s", safe_url, type(e).__name__, e)
+            logger.error("Webhook unexpected error: type=%s, error=%s", type(e).__name__, e)
 
     def _check_body_error_code(self, body: str) -> Optional[str]:
         """Check if a 2xx response body contains a platform-specific error code.
