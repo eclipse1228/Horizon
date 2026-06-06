@@ -159,6 +159,26 @@ By default, AI scoring and enrichment run one item at a time. If your API endpoi
 - Result ordering is preserved regardless of concurrency.
 - If you also use `throttle_sec`, each concurrent task sleeps independently after finishing an item.
 
+### Output Languages
+
+Horizon can generate daily summaries in multiple languages. Supported codes:
+
+| Code | Language |
+| --- | --- |
+| `en` | English |
+| `zh` | Simplified Chinese |
+| `ko` | Korean |
+
+```json
+{
+  "ai": {
+    "languages": ["en", "zh", "ko"]
+  }
+}
+```
+
+Each configured language produces a separate Markdown file and GitHub Pages post. Webhook delivery respects `webhook.languages` when set; otherwise all configured languages are sent.
+
 **Custom Base URL** (for proxies):
 
 ```json
@@ -523,7 +543,7 @@ Webhook notification is optional and disabled unless `webhook.enabled` is `true`
 - `platform`: Optional webhook platform hint. Use `generic` by default, or `feishu` / `lark` to enable platform-specific card rendering.
 - `layout`: Controls the message layout. Use `markdown` for templated Markdown delivery, or `collapsible` with `platform: "feishu"` / `"lark"` for a single Feishu Card JSON 2.0 message with each item in a collapsed panel.
 - `fallback_layout`: Reserved fallback layout for unsupported platform/layout combinations. The current safe fallback is `markdown`.
-- `languages`: Optional webhook-only language filter. Use `["zh"]` or `["en"]` to send only selected languages; use `null` or omit it to send all configured `ai.languages`.
+- `languages`: Optional webhook-only language filter. Use `["zh"]`, `["en"]`, or `["ko"]` to send only selected languages; use `null` or omit it to send all configured `ai.languages`.
 - `request_body`: Optional request body. If empty, Horizon sends a `GET` request. If provided, Horizon sends a `POST` request.
 - `headers`: Optional custom headers, one `Key: Value` pair per line.
 
@@ -570,7 +590,7 @@ Available variables:
 | Variable | Description |
 |----------|-------------|
 | `#{date}` | Report date, for example `2026-04-24` |
-| `#{language}` | Language code, such as `en` or `zh` |
+| `#{language}` | Language code, such as `en`, `zh`, or `ko` |
 | `#{important_items}` | Number of items that passed the score threshold |
 | `#{all_items}` | Total number of fetched items |
 | `#{result}` | `success` or `failed` |

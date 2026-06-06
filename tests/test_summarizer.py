@@ -138,3 +138,53 @@ def test_generate_empty_summary_zh_uses_localized_analyzed_line():
 
     assert "> 已分析 10 条内容，但没有达到重要性阈值的条目。" in result
     assert "Analyzed 10 items" not in result
+
+
+def test_generate_summary_ko_uses_localized_header_and_date():
+    summarizer = DailySummarizer()
+    item = _make_item(1)
+    item.metadata["title_ko"] = "중요한 항목 1"
+
+    result = _run_async(
+        summarizer.generate_summary(
+            [item],
+            date="2026-04-25",
+            total_fetched=10,
+            language="ko",
+        )
+    )
+
+    assert "# Horizon 일간 브리핑 - 2026-04-25" in result
+    assert "> 10개 항목 중 1개의 중요 콘텐츠를 선별했습니다." in result
+    assert "4월 25일 08:00" in result
+    assert "**태그**:" in result
+
+
+def test_generate_webhook_item_ko_uses_korean_labels():
+    summarizer = DailySummarizer()
+    item = _make_item(1)
+    item.metadata["discussion_url"] = "https://news.ycombinator.com/item?id=1"
+
+    result = summarizer.generate_webhook_item(
+        item,
+        language="ko",
+        index=1,
+        total=2,
+    )
+
+    assert result.startswith("1/2번째 항목")
+    assert "[토론](https://news.ycombinator.com/item?id=1)" in result
+
+
+def test_generate_webhook_overview_ko():
+    summarizer = DailySummarizer()
+    items = [_make_item(1)]
+
+    result = summarizer.generate_webhook_overview(
+        items,
+        date="2026-04-25",
+        total_fetched=10,
+        language="ko",
+    )
+
+    assert "10개 항목 중 1개의 중요 콘텐츠를 선별했습니다." in result

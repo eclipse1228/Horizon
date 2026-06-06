@@ -58,6 +58,26 @@ LABELS = {
             "3. 检查 AI 模型是否正常工作\n"
         ),
     },
+    "ko": {
+        "header": "Horizon 일간 브리핑",
+        "source": "출처",
+        "background": "배경",
+        "discussion": "토론",
+        "references": "참고 링크",
+        "tags": "태그",
+        "selected_items": "{total}개 항목 중 {selected}개의 중요 콘텐츠를 선별했습니다.",
+        "empty_analyzed": "{total}개 항목을 분석했지만 중요도 기준을 충족한 항목이 없습니다.",
+        "empty_body": (
+            "오늘은 눈에 띄는 소식이 없습니다. 가능한 원인:\n"
+            "- 추적 중인 소스가 조용한 날\n"
+            "- AI 점수 임계값이 너무 높음\n"
+            "- 정보 소스가 부족함\n\n"
+            "권장 조치:\n"
+            "1. config.json에서 `ai_score_threshold` 낮추기\n"
+            "2. 더 다양한 정보 소스 추가\n"
+            "3. AI 모델이 정상 동작하는지 확인\n"
+        ),
+    },
 }
 
 
@@ -82,7 +102,7 @@ class DailySummarizer:
             items: High-scoring content items (already enriched)
             date: Date string (YYYY-MM-DD)
             total_fetched: Total number of items fetched before filtering
-            language: Output language, either "en" or "zh"
+            language: Output language: "en", "zh", or "ko"
 
         Returns:
             str: Markdown formatted summary
@@ -131,6 +151,12 @@ class DailySummarizer:
                 f"> 从 {total_fetched} 条内容中筛选出 {len(items)} 条重要资讯。\n\n"
                 "下面会按新闻逐条发送详情，你可以只看感兴趣的标题。\n\n"
             )
+        elif language == "ko":
+            header = (
+                f"# {labels['header']} - {date}\n\n"
+                f"> {total_fetched}개 항목 중 {len(items)}개의 중요 콘텐츠를 선별했습니다.\n\n"
+                "관심 있는 제목만 골라 읽을 수 있도록 항목별로 전송됩니다.\n\n"
+            )
         else:
             header = (
                 f"# {labels['header']} - {date}\n\n"
@@ -157,7 +183,12 @@ class DailySummarizer:
     ) -> str:
         """Generate one item message for multi-message webhook delivery."""
         labels = LABELS.get(language, LABELS["en"])
-        prefix = f"第 {index}/{total} 条\n\n" if language == "zh" else f"Item {index}/{total}\n\n"
+        if language == "zh":
+            prefix = f"第 {index}/{total} 条\n\n"
+        elif language == "ko":
+            prefix = f"{index}/{total}번째 항목\n\n"
+        else:
+            prefix = f"Item {index}/{total}\n\n"
         return prefix + self._format_item(item, labels, language, index).rstrip("-\n ")
 
     def _format_item(self, item: ContentItem, labels: dict, language: str, index: int) -> str:
@@ -200,6 +231,11 @@ class DailySummarizer:
             if language == "zh":
                 source_parts.append(
                     f"{item.published_at.month}月{item.published_at.day}日 "
+                    f"{item.published_at:%H:%M}"
+                )
+            elif language == "ko":
+                source_parts.append(
+                    f"{item.published_at.month}월 {item.published_at.day}일 "
                     f"{item.published_at:%H:%M}"
                 )
             else:

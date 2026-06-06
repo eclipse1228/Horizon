@@ -17,6 +17,29 @@ from ..ai.summarizer import DailySummarizer
 logger = logging.getLogger(__name__)
 
 
+def _daily_message_title(date: str, lang: str, kind: str = "summary") -> str:
+    """Return a localized webhook message title for the given delivery kind."""
+    titles = {
+        "summary": {
+            "en": f"Horizon {date} Daily",
+            "zh": f"Horizon {date} 日报",
+            "ko": f"Horizon {date} 일간 브리핑",
+        },
+        "overview": {
+            "en": f"Horizon {date} Overview",
+            "zh": f"Horizon {date} 总览",
+            "ko": f"Horizon {date} 개요",
+        },
+        "collapsible": {
+            "en": f"Horizon {date} Collapsible Daily",
+            "zh": f"Horizon {date} 折叠日报",
+            "ko": f"Horizon {date} 접이식 브리핑",
+        },
+    }
+    by_kind = titles.get(kind, titles["summary"])
+    return by_kind.get(lang, by_kind["en"])
+
+
 # Pattern: #{key} or #{key?param1=val1&param2=val2}
 _PLACEHOLDER_RE = re.compile(r"#\{(\w+)(\?\w+=[^}]+)?\}")
 _SENSITIVE_HEADER_RE = re.compile(
@@ -357,6 +380,18 @@ class WebhookNotifier:
                 "点击下方新闻面板即可在飞书内展开阅读全文。"
             )
 
+        if lang == "ko":
+            if item_count == 0:
+                return (
+                    f"# Horizon 일간 브리핑 - {date}\n\n"
+                    f"> {all_items_count}개 항목을 분석했지만 중요도 기준을 충족한 항목이 없습니다."
+                )
+            return (
+                f"# Horizon 일간 브리핑 - {date}\n\n"
+                f"> {all_items_count}개 항목 중 {item_count}개의 중요 콘텐츠를 선별했습니다.\n\n"
+                "아래 패널을 펼쳐 전체 브리핑을 읽을 수 있습니다."
+            )
+
         if item_count == 0:
             return (
                 f"# Horizon Daily - {date}\n\n"
@@ -414,11 +449,7 @@ class WebhookNotifier:
                 "header": {
                     "title": {
                         "tag": "plain_text",
-                        "content": (
-                            f"Horizon {date} 折叠日报"
-                            if lang == "zh"
-                            else f"Horizon {date} Collapsible Daily"
-                        ),
+                        "content": _daily_message_title(date, lang, "collapsible"),
                     },
                     "template": "blue",
                 },
@@ -464,11 +495,7 @@ class WebhookNotifier:
             return [
                 {
                     **base_vars,
-                    "message_title": (
-                        f"Horizon {date} 折叠日报"
-                        if lang == "zh"
-                        else f"Horizon {date} Collapsible Daily"
-                    ),
+                    "message_title": _daily_message_title(date, lang, "collapsible"),
                     "message_kind": "collapsible",
                     "summary": self._build_feishu_collapsible_overview(
                         item_count=len(important_items),
@@ -497,11 +524,7 @@ class WebhookNotifier:
             )
             overview_message = {
                 **base_vars,
-                "message_title": (
-                    f"Horizon {date} 总览"
-                    if lang == "zh"
-                    else f"Horizon {date} Overview"
-                ),
+                "message_title": _daily_message_title(date, lang, "overview"),
                 "message_kind": "overview",
                 "summary": overview,
             }
@@ -535,9 +558,7 @@ class WebhookNotifier:
         return [
             {
                 **base_vars,
-                "message_title": (
-                    f"Horizon {date} 日报" if lang == "zh" else f"Horizon {date} Daily"
-                ),
+                "message_title": _daily_message_title(date, lang, "summary"),
                 "message_kind": "summary",
                 "summary": summary,
             }
@@ -725,7 +746,7 @@ class WebhookNotifier:
             important_items: List of important content items
             all_items_count: Total number of items fetched
             date: Date string (YYYY-MM-DD)
-            lang: Language code ("en" or "zh")
+            lang: Language code ("en", "zh", or "ko")
             summarizer: DailySummarizer instance for generating webhook overviews
         """
         messages = self.build_daily_summary_messages(
