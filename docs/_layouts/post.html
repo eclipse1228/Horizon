@@ -1,0 +1,19 @@
+---
+layout: default
+---
+
+<article class="hz-post">
+  <header class="hz-post-header">
+    <p class="hz-post-meta">
+      <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: "%Y-%m-%d" }}</time>
+      · {{ page.lang | upcase }}
+    </p>
+    <h1>{{ page.title }}</h1>
+  </header>
+  <div class="main-content hz-post-body">
+    {{ content }}
+  </div>
+  <footer class="hz-post-footer">
+    <a class="hz-back-link" href="{{ '/' | relative_url }}">← All briefings</a>
+  </footer>
+</article>

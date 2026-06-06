@@ -149,7 +149,7 @@ class HorizonOrchestrator:
                     # Add Jekyll front matter
                     front_matter = (
                         "---\n"
-                        "layout: default\n"
+                        "layout: post\n"
                         f"title: \"Horizon Summary: {today} ({lang.upper()})\"\n"
                         f"date: {today}\n"
                         f"lang: {lang}\n"

@@ -65,7 +65,7 @@
 
     var saved = null;
     try { saved = localStorage.getItem('horizon-lang'); } catch (e) { /* noop */ }
-    var currentLang = saved === 'en' || saved === 'ko' ? saved : 'zh';
+    var currentLang = saved === 'en' || saved === 'ko' ? saved : (saved === 'zh' ? 'zh' : 'ko');
 
     var sections = {
       en: document.getElementById('lang-en'),
