@@ -27,8 +27,8 @@
     paragraphs.forEach(function (p) {
       var text = p.textContent.trim();
 
-      // Tag line: starts with Tags or 标签 (bold prefix rendered by Markdown)
-      if (/^(Tags|标签)\s*:/.test(text)) {
+      // Tag line: starts with Tags, 标签, or 태그
+      if (/^(Tags|标签|태그)\s*:/.test(text)) {
         p.classList.add('tag-line');
         return;
       }
@@ -41,9 +41,8 @@
     });
   }
 
-  /** Set up EN/中文 language toggle as a page-level control */
+  /** Set up EN / 中文 / 한국어 language toggle */
   function setupLanguageToggle() {
-    // Create toggle buttons
     var toggle = document.createElement('div');
     toggle.className = 'lang-toggle';
 
@@ -55,59 +54,63 @@
     btnZh.textContent = '中文';
     btnZh.type = 'button';
 
+    var btnKo = document.createElement('button');
+    btnKo.textContent = '한국어';
+    btnKo.type = 'button';
+
     toggle.appendChild(btnEn);
     toggle.appendChild(btnZh);
-
-    // Insert at top of body
+    toggle.appendChild(btnKo);
     document.body.insertBefore(toggle, document.body.firstChild);
 
-    // Read saved preference, default to zh
     var saved = null;
     try { saved = localStorage.getItem('horizon-lang'); } catch (e) { /* noop */ }
-    var currentLang = saved === 'en' ? 'en' : 'zh';
+    var currentLang = saved === 'en' || saved === 'ko' ? saved : 'zh';
+
+    var sections = {
+      en: document.getElementById('lang-en'),
+      zh: document.getElementById('lang-zh'),
+      ko: document.getElementById('lang-ko'),
+    };
 
     function updateButtons(lang) {
-      if (lang === 'en') {
-        btnEn.classList.add('active');
-        btnZh.classList.remove('active');
-      } else {
-        btnZh.classList.add('active');
-        btnEn.classList.remove('active');
-      }
+      btnEn.classList.toggle('active', lang === 'en');
+      btnZh.classList.toggle('active', lang === 'zh');
+      btnKo.classList.toggle('active', lang === 'ko');
     }
-
-    // Index page: toggle lang-section visibility
-    var zhSection = document.getElementById('lang-zh');
-    var enSection = document.getElementById('lang-en');
 
     function showSection(lang) {
-      if (!zhSection || !enSection) return;
-      if (lang === 'en') {
-        enSection.classList.remove('hidden');
-        zhSection.classList.add('hidden');
-      } else {
-        zhSection.classList.remove('hidden');
-        enSection.classList.add('hidden');
-      }
+      Object.keys(sections).forEach(function (key) {
+        var section = sections[key];
+        if (!section) return;
+        section.classList.toggle('hidden', key !== lang);
+      });
     }
 
-    // Article page: redirect to the other language version
     function switchArticleLang(lang) {
-      var path = window.location.pathname;
-      var target = null;
-      if (lang === 'en' && /-zh(?:\.html)?$/.test(path.replace(/\/$/, ''))) {
-        target = path.replace(/-zh(\.html)?$/, '-en$1').replace(/-zh\/$/, '-en/');
-      } else if (lang === 'zh' && /-en(?:\.html)?$/.test(path.replace(/\/$/, ''))) {
-        target = path.replace(/-en(\.html)?$/, '-zh$1').replace(/-en\/$/, '-zh/');
-      }
-      if (target) window.location.href = target;
+      var path = window.location.pathname.replace(/\/$/, '');
+      var suffixes = ['-en', '-zh', '-ko'];
+      var currentSuffix = null;
+      suffixes.forEach(function (suffix) {
+        if (new RegExp(suffix + '(?:\\.html)?$').test(path)) {
+          currentSuffix = suffix;
+        }
+      });
+      if (!currentSuffix) return;
+      var targetSuffix = '-' + lang;
+      if (currentSuffix === targetSuffix) return;
+      var target = path.replace(
+        new RegExp(currentSuffix + '(?:\\.html)?$'),
+        targetSuffix + (path.endsWith('.html') ? '.html' : '')
+      );
+      window.location.href = target;
     }
 
     function setLang(lang) {
       currentLang = lang;
       updateButtons(lang);
       try { localStorage.setItem('horizon-lang', lang); } catch (e) { /* noop */ }
-      if (zhSection && enSection) {
+      if (sections.en && sections.zh && sections.ko) {
         showSection(lang);
       } else {
         switchArticleLang(lang);
@@ -116,10 +119,10 @@
 
     btnEn.addEventListener('click', function () { setLang('en'); });
     btnZh.addEventListener('click', function () { setLang('zh'); });
+    btnKo.addEventListener('click', function () { setLang('ko'); });
 
-    // Initialize
     updateButtons(currentLang);
-    if (zhSection && enSection) {
+    if (sections.en && sections.zh && sections.ko) {
       showSection(currentLang);
     }
   }

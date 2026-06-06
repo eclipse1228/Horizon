@@ -561,7 +561,7 @@ class HorizonOrchestrator:
             items: Important items to include (already enriched with background/related)
             date: Date string
             total_fetched: Total items fetched
-            language: Output language ("en" or "zh")
+            language: Output language ("en", "zh", or "ko")
 
         Returns:
             str: Markdown summary

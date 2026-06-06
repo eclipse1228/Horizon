@@ -103,13 +103,13 @@ CONTENT_ENRICHMENT_SYSTEM = """You are a knowledgeable technical writer who help
 
 Given a high-scoring news item, its content, and web search results about the topic, your job is to produce a structured analysis.
 
-Provide EACH text field in BOTH English and Chinese. Use the following key naming convention:
-- title_en / title_zh
-- whats_new_en / whats_new_zh
-- why_it_matters_en / why_it_matters_zh
-- key_details_en / key_details_zh
-- background_en / background_zh
-- community_discussion_en / community_discussion_zh
+Provide EACH text field in English, Simplified Chinese, and Korean. Use the following key naming convention:
+- title_en / title_zh / title_ko
+- whats_new_en / whats_new_zh / whats_new_ko
+- why_it_matters_en / why_it_matters_zh / why_it_matters_ko
+- key_details_en / key_details_zh / key_details_ko
+- background_en / background_zh / background_ko
+- community_discussion_en / community_discussion_zh / community_discussion_ko
 
 Field definitions:
 0. **title** (one short phrase, ≤15 words): A clear, accurate headline for the news item.
@@ -127,6 +127,7 @@ Field definitions:
 **CRITICAL — Language rules (MUST follow):**
 - All *_en fields MUST be written in English.
 - All *_zh fields MUST be written in Simplified Chinese (简体中文). 绝对不能用英文写 _zh 字段的内容。Only keep technical abbreviations, acronyms, and widely-used proper nouns (e.g. "GPT-4", "CUDA", "Rust") in their original English form; everything else must be Chinese.
+- All *_ko fields MUST be written in Korean (한국어). Keep technical abbreviations and widely-used proper nouns in their original form when natural.
 
 Guidelines:
 - EVERY field (except community_discussion when no comments exist) must contain at least one complete sentence — no field may be empty or contain just a phrase
@@ -137,7 +138,7 @@ Guidelines:
 - For **sources**: pick 1-3 URLs from the Web Search Results that you actually relied on for the background fields. Only use URLs that appear verbatim in the search results above — do not invent or modify URLs.
 """
 
-CONTENT_ENRICHMENT_USER = """Provide a structured bilingual analysis for the following news item.
+CONTENT_ENRICHMENT_USER = """Provide a structured trilingual analysis for the following news item.
 
 **News Item:**
 - Title: {title}
@@ -154,19 +155,25 @@ CONTENT_ENRICHMENT_USER = """Provide a structured bilingual analysis for the fol
 **Web Search Results (for grounding):**
 {web_context}
 
-Respond with valid JSON only. Each _en field must be in English; each _zh field MUST be in Simplified Chinese (中文). Every field MUST be at least one complete sentence (except community_discussion fields when no comments exist):
+Respond with valid JSON only. Each _en field must be in English; each _zh field MUST be in Simplified Chinese (中文); each _ko field MUST be in Korean (한국어). Every field MUST be at least one complete sentence (except community_discussion fields when no comments exist):
 {{
   "title_en": "<short headline in English, ≤15 words>",
   "title_zh": "<用中文写一个简短标题，不超过15个词>",
+  "title_ko": "<한국어로 짧은 제목, 15단어 이내>",
   "whats_new_en": "<1-2 sentences in English>",
   "whats_new_zh": "<用中文写1-2句话>",
+  "whats_new_ko": "<한국어로 1-2문장>",
   "why_it_matters_en": "<1-2 sentences in English>",
   "why_it_matters_zh": "<用中文写1-2句话>",
+  "why_it_matters_ko": "<한국어로 1-2문장>",
   "key_details_en": "<1-2 sentences in English>",
   "key_details_zh": "<用中文写1-2句话>",
+  "key_details_ko": "<한국어로 1-2문장>",
   "background_en": "<2-4 sentences in English, or empty string>",
   "background_zh": "<用中文写2-4句话，或空字符串>",
+  "background_ko": "<한국어로 2-4문장, 또는 빈 문자열>",
   "community_discussion_en": "<1-3 sentences in English, or empty string>",
   "community_discussion_zh": "<用中文写1-3句话，或空字符串>",
+  "community_discussion_ko": "<한국어로 1-3문장, 또는 빈 문자열>",
   "sources": ["<url from search results>", "..."]
 }}"""

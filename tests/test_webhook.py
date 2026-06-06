@@ -884,6 +884,34 @@ class TestSendDailySummary:
             assert vars["language"] == "zh"
         del os.environ[_TEST_URL_ENV]
 
+    def test_summary_delivery_ko_lang(self):
+        """Korean lang uses '일간 브리핑' in message_title."""
+        os.environ[_TEST_URL_ENV] = _TEST_URL
+        config = WebhookConfig(
+            enabled=True,
+            url_env=_TEST_URL_ENV,
+            delivery="summary",
+        )
+        notifier = WebhookNotifier(config)
+        summarizer = DailySummarizer()
+        items = [_make_item()]
+
+        with patch.object(notifier, "notify", new_callable=AsyncMock) as mock_notify:
+            _run_async(
+                notifier.send_daily_summary(
+                    summary="## 테스트 요약",
+                    important_items=items,
+                    all_items_count=5,
+                    date="2026-04-24",
+                    lang="ko",
+                    summarizer=summarizer,
+                )
+            )
+            vars = mock_notify.call_args[0][0]
+            assert vars["message_title"] == "Horizon 2026-04-24 일간 브리핑"
+            assert vars["language"] == "ko"
+        del os.environ[_TEST_URL_ENV]
+
     def test_summary_and_items_delivery_calls_notify_multiple_times(self):
         """delivery='summary_and_items' sends overview + N item notifications."""
         os.environ[_TEST_URL_ENV] = _TEST_URL
