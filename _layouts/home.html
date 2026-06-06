@@ -1,0 +1,60 @@
+---
+layout: default
+---
+
+<section class="hz-hero">
+  <div class="hz-hero-inner">
+    <img class="hz-hero-logo" src="{{ '/assets/horizon-header.svg' | relative_url }}" alt="Horizon sunrise logo" width="72" height="72">
+    <div>
+      <p class="hz-eyebrow">AI-curated tech briefing</p>
+      <h1>{{ site.title }}</h1>
+      <p class="hz-hero-tagline">{{ site.description }}</p>
+      <p class="hz-hero-meta">
+        Daily picks from Hacker News, Reddit, RSS, and GitHub — scored, summarized, and published automatically.
+      </p>
+    </div>
+  </div>
+</section>
+
+{% assign langs = "ko,zh,en" | split: "," %}
+{% for code in langs %}
+  {% assign label = "한국어" %}
+  {% if code == "zh" %}{% assign label = "中文" %}{% endif %}
+  {% if code == "en" %}{% assign label = "English" %}{% endif %}
+  {% assign feed = '/feed-ko.xml' %}
+  {% if code == "zh" %}{% assign feed = '/feed-zh.xml' %}{% endif %}
+  {% if code == "en" %}{% assign feed = '/feed-en.xml' %}{% endif %}
+
+  <section id="lang-{{ code }}" class="lang-section hz-lang-block">
+    <header class="hz-section-header">
+      <h2>{{ label }} Digest</h2>
+      <a class="hz-rss-link" href="{{ feed | relative_url }}">RSS</a>
+    </header>
+
+    {% assign posts = site.posts | where: "lang", code %}
+    {% if posts.size > 0 %}
+      <div class="post-grid">
+        {% for post in posts limit: 12 %}
+          {% include post-card.html post=post %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="hz-empty">No briefings yet. The next daily run will appear here.</p>
+    {% endif %}
+  </section>
+{% endfor %}
+
+<section class="hz-about-strip">
+  <h2>About this site</h2>
+  <p>
+    This is a public daily briefing powered by
+    <a href="https://github.com/eclipse1228/Horizon">Horizon</a>.
+    Each edition is generated from configured sources, ranked by AI, and published to GitHub Pages.
+  </p>
+  <div class="hz-about-links">
+    <a href="{{ '/configuration' | relative_url }}">Setup guide</a>
+    <a href="{{ '/scoring' | relative_url }}">Scoring</a>
+    <a href="{{ '/scrapers' | relative_url }}">Sources</a>
+    <a href="https://github.com/eclipse1228/Horizon">GitHub</a>
+  </div>
+</section>
