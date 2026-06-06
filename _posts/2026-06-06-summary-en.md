@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: post
 title: "Horizon Summary: 2026-06-06 (EN)"
 date: 2026-06-06
 lang: en
