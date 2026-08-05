@@ -1,8 +1,11 @@
 name: Daily Horizon Summary
 
 on:
+  # NOTE: This repository is a fork, so GitHub never triggers `schedule`
+  # cron events for it. Automated runs are dispatched 4x/day (00/06/12/18 UTC
+  # = 09/15/21/03 KST) by the Cloudflare Worker in cloudflare/horizon-cron.
   schedule:
-    - cron: '0 9 * * *'  # Every day at 09:00 KST
+    - cron: '0 9 * * *'  # Fallback only (active when repo is not a fork)
       timezone: 'Asia/Seoul'
   workflow_dispatch:      # Allow manual trigger
 
@@ -32,13 +35,15 @@ jobs:
 
       - name: Run Horizon
         env:
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          # AI: OpenRouter -> DeepSeek v4 Flash (see data/config.github.json)
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           HORIZON_WEBHOOK_URL: ${{ secrets.HORIZON_WEBHOOK_URL }}
           HORIZON_WEBHOOK_URL_2: ${{ secrets.HORIZON_WEBHOOK_URL_2 }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: uv run horizon --hours 48
+        # 4x/day dispatch (every 6h); 8h window covers the gap with margin
+        run: uv run horizon --hours 8
 
       - name: Set current date as environment variable
         run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV

@@ -1,0 +1,19 @@
+# Horizon automated dispatcher — Cloudflare Worker
+# Triggers eclipse1228/Horizon's "Daily Horizon Summary" workflow 4x/day
+# via workflow_dispatch (GitHub Actions never runs `schedule` crons in forks).
+
+name = "horizon-cron-eclipse1228"
+main = "src/worker.js"
+compatibility_date = "2026-07-01"
+account_id = "9556ce4d9c35d45e1175d61442a0efdb"
+
+[triggers]
+# 4x per day: 00:00, 06:00, 12:00, 18:00 UTC == 09:00, 15:00, 21:00, 03:00 KST
+crons = ["0 0,6,12,18 * * *"]
+
+# Environment variables (non-secret; GH_PAT is set via: wrangler secret put GH_PAT)
+[vars]
+GH_OWNER = "eclipse1228"
+GH_REPO = "Horizon"
+GH_WORKFLOW = "daily-summary.yml"
+GH_REF = "main"

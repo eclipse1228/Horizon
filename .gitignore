@@ -51,6 +51,10 @@ docs/_posts/*.md
 logs/*.log
 *.log
 
+# Cloudflare
+.wrangler/
+cloudflare/**/.wrangler/
+
 # macOS
 .DS_Store
 

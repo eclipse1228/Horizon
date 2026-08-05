@@ -140,7 +140,9 @@ class HorizonOrchestrator:
                 try:
                     from pathlib import Path
 
-                    post_filename = f"{today}-summary-{lang}.md"
+                    run_dt = datetime.now(timezone.utc)
+                    run_stamp = run_dt.strftime("%H%M")
+                    post_filename = f"{today}-{run_stamp}Z-summary-{lang}.md"
                     posts_dir = Path("docs/_posts")
                     posts_dir.mkdir(parents=True, exist_ok=True)
 
@@ -150,8 +152,8 @@ class HorizonOrchestrator:
                     front_matter = (
                         "---\n"
                         "layout: post\n"
-                        f"title: \"Horizon Summary: {today} ({lang.upper()})\"\n"
-                        f"date: {today}\n"
+                        f"title: \"Horizon: {today} ({lang.upper()}) - {run_stamp}Z\"\n"
+                        f"date: {run_dt.strftime('%Y-%m-%d %H:%M:%S')} +0000\n"
                         f"lang: {lang}\n"
                         "---\n\n"
                     )
