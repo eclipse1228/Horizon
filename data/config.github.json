@@ -10,7 +10,7 @@
     "throttle_sec": 0,
     "analysis_concurrency": 1,
     "enrichment_concurrency": 1,
-    "languages": ["en", "zh", "ko"]
+    "languages": ["ko"]
   },
   "email": {
     "enabled": true,
@@ -126,7 +126,7 @@
     "platform": "generic",
     "layout": "markdown",
     "fallback_layout": "markdown",
-    "languages": null,
+    "languages": ["ko"],
     "request_body": {
       "content": "**#{message_title}**\n\nHorizon: #{important_items}/#{all_items} important items\n\n#{summary?limit=1900&split=---}"
     },
